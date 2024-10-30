@@ -21,6 +21,7 @@ type Subcommand struct {
 	ShortName             string
 	Description           string
 	Position              int // the position of this subcommand, not including flags
+	RequireSubcommand     bool
 	Subcommands           []*Subcommand
 	Flags                 []*Flag
 	PositionalFlags       []*PositionalValue
@@ -282,10 +283,18 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 			}
 		}
 
+		if sc.RequireSubcommand {
+			p.ShowHelpWithMessage("Expected subcommand")
+			exitOrPanic(2)
+		}
+
 		// determine positional args and parse them by positional value and name
 		var foundPositional bool
+		var varargs *PositionalValue
 		for _, val := range sc.PositionalFlags {
-			if relativeDepth == val.Position {
+			if val.Position == -1 {
+				varargs = val
+			} else if relativeDepth == val.Position {
 				debugPrint("Found a positional value at relativePos:", relativeDepth, "value:", v)
 
 				// set original value for help output
@@ -298,6 +307,11 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 				val.Found = true
 				break
 			}
+		}
+
+		if !foundPositional && varargs != nil {
+			*varargs.AssignmentVars = append(*varargs.AssignmentVars, v)
+			foundPositional = true
 		}
 
 		// if there aren't any positional flags but there are subcommands that
@@ -690,6 +704,26 @@ func (sc *Subcommand) AddPositionalValue(assignmentVar *string, name string, rel
 		Required:      required,
 		Description:   description,
 		defaultValue:  *assignmentVar,
+	}
+	sc.PositionalFlags = append(sc.PositionalFlags, &newPositionalValue)
+}
+
+func (sc *Subcommand) AddExtraValues(assignmentVar *[]string, name string, description string) {
+
+	// ensure no varargs at this depth
+	for _, other := range sc.PositionalFlags {
+		if other.Position == -1 {
+			log.Panicln("Unable to add positional value " + name + " because " + other.Name + " already exists")
+		}
+	}
+
+	newPositionalValue := PositionalValue{
+		Name:           name,
+		Position:       -1,
+		AssignmentVars: assignmentVar,
+		Required:       false,
+		Description:    description,
+		defaultValue:   strings.Join(*assignmentVar, " "),
 	}
 	sc.PositionalFlags = append(sc.PositionalFlags, &newPositionalValue)
 }

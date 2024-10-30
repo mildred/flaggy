@@ -139,21 +139,24 @@ func (h *Help) ExtractValues(p *Parser, message string) {
 
 	// formulate the usage string
 	// first, we capture all the command and positional names by position
+	requiredByPosition := make(map[int]bool)
 	commandsByPosition := make(map[int]string)
 	for _, pos := range p.subcommandContext.PositionalFlags {
 		if pos.Hidden {
 			continue
 		}
+		requiredByPosition[pos.Position] = requiredByPosition[pos.Position] || pos.Required
 		if len(commandsByPosition[pos.Position]) > 0 {
-			commandsByPosition[pos.Position] = commandsByPosition[pos.Position] + "|" + pos.Name
+			commandsByPosition[pos.Position] = commandsByPosition[pos.Position] + "|<" + pos.Name + ">"
 		} else {
-			commandsByPosition[pos.Position] = pos.Name
+			commandsByPosition[pos.Position] = "<" + pos.Name + ">"
 		}
 	}
 	for _, cmd := range p.subcommandContext.Subcommands {
 		if cmd.Hidden {
 			continue
 		}
+		requiredByPosition[cmd.Position] = true
 		if len(commandsByPosition[cmd.Position]) > 0 {
 			commandsByPosition[cmd.Position] = commandsByPosition[cmd.Position] + "|" + cmd.Name
 		} else {
@@ -176,13 +179,21 @@ func (h *Help) ExtractValues(p *Parser, message string) {
 		usageString = p.subcommandContext.Name
 		for i := 1; i <= highestPosition; i++ {
 			if len(commandsByPosition[i]) > 0 {
-				usageString = usageString + " [" + commandsByPosition[i] + "]"
+				if requiredByPosition[i] {
+					usageString = usageString + " " + commandsByPosition[i] + ""
+				} else {
+					usageString = usageString + " [" + commandsByPosition[i] + "]"
+				}
 			} else {
 				// dont keep listing after the first position without any properties
 				// it will be impossible to reach anything beyond here anyway
 				break
 			}
 		}
+	}
+
+	if len(commandsByPosition[-1]) > 0 {
+		usageString = usageString + " " + commandsByPosition[-1] + "..."
 	}
 
 	h.UsageString = usageString
