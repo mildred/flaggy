@@ -299,11 +299,6 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 			return partialMatches[0].parse(p, args, depth+parsedArgCount) // continue recursive positional parsing
 		}
 
-		if sc.RequireSubcommand {
-			p.ShowHelpWithMessage("Expected subcommand")
-			exitOrPanic(2)
-		}
-
 		// determine positional args and parse them by positional value and name
 		var foundPositional bool
 		var varargs *PositionalValue
@@ -382,6 +377,11 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 	if helpRequested && p.ShowHelpWithHFlag {
 		p.ShowHelp()
 		exitOrPanic(0)
+	}
+
+	if sc.RequireSubcommand {
+		p.ShowHelpWithMessage("Expected subcommand")
+		exitOrPanic(2)
 	}
 
 	// find any positionals that were not used on subcommands that were
