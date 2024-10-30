@@ -2,6 +2,7 @@ package flaggy
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"net"
 	"reflect"
@@ -327,6 +328,8 @@ func (f *Flag) identifyAndAssignValue(value string) error {
 		existing := f.AssignmentVar.(*[]net.IPMask)
 		new := append(*existing, v)
 		*existing = new
+	case flag.Value:
+		err = f.AssignmentVar.(flag.Value).Set(value)
 	default:
 		return errors.New("Unknown flag assignmentVar supplied in flag " + f.LongName + " " + f.ShortName)
 	}
@@ -627,6 +630,8 @@ func (f *Flag) returnAssignmentVarValueAsString() (string, error) {
 			strSlice = append(strSlice, m.String())
 		}
 		return strings.Join(strSlice, ","), err
+	case flag.Value:
+		return f.AssignmentVar.(flag.Value).String(), nil
 	default:
 		return "", errors.New("Unknown flag assignmentVar found in flag " + f.LongName + " " + f.ShortName + ". Type not supported: " + reflect.TypeOf(f.AssignmentVar).String())
 	}

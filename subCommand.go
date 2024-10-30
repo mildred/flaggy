@@ -1,6 +1,7 @@
 package flaggy
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -449,6 +450,11 @@ func (sc *Subcommand) add(assignmentVar interface{}, shortName string, longName 
 		Description:   description,
 	}
 	sc.Flags = append(sc.Flags, &newFlag)
+}
+
+// String adds a new custom flag
+func (sc *Subcommand) Var(assignmentVar flag.Value, shortName string, longName string, description string) {
+	sc.add(assignmentVar, shortName, longName, description)
 }
 
 // String adds a new string flag

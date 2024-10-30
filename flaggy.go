@@ -7,6 +7,7 @@
 package flaggy // import "github.com/integrii/flaggy"
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -76,6 +77,11 @@ func ParseArgs(args []string) {
 	if err != nil {
 		log.Panicln("Error from argument parser:", err)
 	}
+}
+
+// String adds a new custom flag
+func Var(assignmentVar flag.Value, shortName string, longName string, description string) {
+	DefaultParser.add(assignmentVar, shortName, longName, description)
 }
 
 // String adds a new string flag
