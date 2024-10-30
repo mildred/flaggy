@@ -401,8 +401,9 @@ func parseArgWithValue(arg string) (key string, value string) {
 }
 
 // parseFlagToName parses a flag with space value down to a key name:
-//     --path -> path
-//     -p -> p
+//
+//	--path -> path
+//	-p -> p
 func parseFlagToName(arg string) string {
 	// remove minus from start
 	arg = strings.TrimLeft(arg, "-")
@@ -411,7 +412,8 @@ func parseFlagToName(arg string) string {
 }
 
 // collectAllNestedFlags recurses through the command tree to get all
-//     flags specified on a subcommand and its descending subcommands
+//
+//	flags specified on a subcommand and its descending subcommands
 func collectAllNestedFlags(sc *Subcommand) []*Flag {
 	fullList := sc.Flags
 	for _, sc := range sc.Subcommands {

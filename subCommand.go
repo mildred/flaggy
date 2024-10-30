@@ -30,6 +30,11 @@ type Subcommand struct {
 	AdditionalHelpAppend  string        // additional appended message when Help is displayed
 	Used                  bool          // indicates this subcommand was found and parsed
 	Hidden                bool          // indicates this subcommand should be hidden from help
+	CommandUsed           CommandHook
+}
+
+type CommandHook interface {
+	Run() error
 }
 
 // NewSubcommand creates a new subcommand that can have flags or PositionalFlags
@@ -815,4 +820,20 @@ You must either change the flag's name, or disable flaggy's internal help
 flag with 'flaggy.DefaultParser.ShowHelpWithHFlag = false'.  If you are using
 a custom parser, you must instead set '.ShowHelpWithHFlag = false' on it.`)
 	exitOrPanic(1)
+}
+
+func (sc *Subcommand) RunCommandUsed() error {
+	if sc.Used && sc.CommandUsed != nil {
+		err := sc.CommandUsed.Run()
+		if err != nil {
+			return err
+		}
+	}
+	for _, cmd := range sc.Subcommands {
+		err := cmd.RunCommandUsed()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

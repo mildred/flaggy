@@ -77,6 +77,11 @@ func (p *Parser) ParseArgs(args []string) error {
 		}
 	}
 
+	err = p.RunCommandUsed()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
