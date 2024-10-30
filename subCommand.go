@@ -218,6 +218,7 @@ func (sc *Subcommand) findAllParsedValues() []parsedValue {
 // and subcommands parsed is returned so that the parser can ultimately decide
 // if there were any unexpected values supplied by the user
 func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
+	p.commandsPath = append(p.commandsPath, sc.Name)
 
 	debugPrint("- Parsing subcommand", sc.Name, "with depth of", depth, "and args", args)
 
@@ -274,6 +275,8 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 		}
 		parsedArgCount++
 
+		var partialMatches []*Subcommand
+
 		// determine subcommands and parse them by positional value and name
 		for _, cmd := range sc.Subcommands {
 			// debugPrint("Subcommand being compared", relativeDepth, "==", cmd.Position, "and", v, "==", cmd.Name, "==", cmd.ShortName)
@@ -281,6 +284,14 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 				debugPrint("Decending into positional subcommand", cmd.Name, "at relativeDepth", relativeDepth, "and absolute depth", depth+1)
 				return cmd.parse(p, args, depth+parsedArgCount) // continue recursive positional parsing
 			}
+			if relativeDepth == cmd.Position && strings.HasPrefix(cmd.Name, v) && v != "" {
+				partialMatches = append(partialMatches, cmd)
+			}
+		}
+
+		if sc.RequireSubcommand && len(partialMatches) == 1 {
+			debugPrint("Decending into positional subcommand", partialMatches[0].Name, "from partial match", v, "at relativeDepth", relativeDepth, "and absolute depth", depth+1)
+			return partialMatches[0].parse(p, args, depth+parsedArgCount) // continue recursive positional parsing
 		}
 
 		if sc.RequireSubcommand {

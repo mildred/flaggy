@@ -61,7 +61,7 @@ func (h *Help) ExtractValues(p *Parser, message string) {
 	// appendMessage  string
 	h.AppendMessage = p.subcommandContext.AdditionalHelpAppend
 	// command name
-	h.CommandName = p.subcommandContext.Name
+	h.CommandName = strings.Join(p.commandsPath, " ")
 	// description
 	h.Description = p.subcommandContext.Description
 

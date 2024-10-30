@@ -23,6 +23,7 @@ type Parser struct {
 	HelpTemplate               *template.Template // template for Help output
 	trailingArgumentsExtracted bool               // indicates that trailing args have been parsed and should not be appended again
 	parsed                     bool               // indicates this parser has parsed
+	commandsPath               []string           // command path
 	subcommandContext          *Subcommand        // points to the most specific subcommand being used
 }
 
