@@ -54,9 +54,10 @@ func NewSubcommand(name string) *Subcommand {
 // out of the supplied args and returns the resulting positional items in order,
 // all the flag names found (without values), a bool to indicate if help was
 // requested, and any errors found during parsing
-func (sc *Subcommand) parseAllFlagsFromArgs(p *Parser, args []string) ([]string, bool, error) {
+func (sc *Subcommand) parseAllFlagsFromArgs(p *Parser, args []string) ([]string, []string, bool, error) {
 
 	var positionalOnlyArguments []string
+	var trailingArguments []string = nil
 	var helpRequested bool // indicates the user has supplied -h and we
 	// should render help if we are the last subcommand
 
@@ -83,6 +84,7 @@ func (sc *Subcommand) parseAllFlagsFromArgs(p *Parser, args []string) ([]string,
 
 		// if end arg -- has been found, just add everything to TrailingArguments
 		if endArgFound {
+			trailingArguments = append(trailingArguments, a)
 			if !p.trailingArgumentsExtracted {
 				p.TrailingArguments = append(p.TrailingArguments, a)
 			}
@@ -129,6 +131,7 @@ func (sc *Subcommand) parseAllFlagsFromArgs(p *Parser, args []string) ([]string,
 		case argIsFinal:
 			// debugPrint("Arg", i, "is final:", a)
 			endArgFound = true
+			trailingArguments = []string{}
 		case argIsPositional:
 			// debugPrint("Arg is positional or subcommand:", a)
 			// this positional argument into a slice of their own, so that
@@ -150,7 +153,7 @@ func (sc *Subcommand) parseAllFlagsFromArgs(p *Parser, args []string) ([]string,
 
 				// if an error occurs, just return it and quit parsing
 				if err != nil {
-					return []string{}, false, err
+					return []string{}, []string{}, false, err
 				}
 
 				// log all values parsed by this subcommand.  We leave the value blank
@@ -174,7 +177,7 @@ func (sc *Subcommand) parseAllFlagsFromArgs(p *Parser, args []string) ([]string,
 			}
 			valueSet, err := setValueForParsers(a, nextArg, p, sc)
 			if err != nil {
-				return []string{}, false, err
+				return []string{}, []string{}, false, err
 			}
 
 			// log all parsed values in the subcommand
@@ -191,7 +194,7 @@ func (sc *Subcommand) parseAllFlagsFromArgs(p *Parser, args []string) ([]string,
 			// set the value in this subcommand and its root parser
 			valueSet, err := setValueForParsers(key, val, p, sc)
 			if err != nil {
-				return []string{}, false, err
+				return []string{}, []string{}, false, err
 			}
 
 			// log all values parsed by the subcommand
@@ -201,7 +204,7 @@ func (sc *Subcommand) parseAllFlagsFromArgs(p *Parser, args []string) ([]string,
 		}
 	}
 
-	return positionalOnlyArguments, helpRequested, nil
+	return positionalOnlyArguments, trailingArguments, helpRequested, nil
 }
 
 // findAllParsedValues finds all values parsed by all subcommands and this
@@ -254,7 +257,7 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 	// (subcommands and positional values), along with the flags used.
 	// Then the flag values are applied to the parent parser and the current
 	// subcommand being parsed.
-	positionalOnlyArguments, helpRequested, err := sc.parseAllFlagsFromArgs(p, args)
+	positionalOnlyArguments, trailingArguments, helpRequested, err := sc.parseAllFlagsFromArgs(p, args)
 	if err != nil {
 		return err
 	}
@@ -262,6 +265,13 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 	// indicate that trailing arguments have been extracted, so that they aren't
 	// appended a second time
 	p.trailingArgumentsExtracted = true
+
+	var varargs *PositionalValue
+	for _, val := range sc.PositionalFlags {
+		if val.Position == -1 {
+			varargs = val
+		}
+	}
 
 	// loop over positional values and look for their matching positional
 	// parameter, or their positional command.  If neither are found, then
@@ -301,11 +311,8 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 
 		// determine positional args and parse them by positional value and name
 		var foundPositional bool
-		var varargs *PositionalValue
 		for _, val := range sc.PositionalFlags {
-			if val.Position == -1 {
-				varargs = val
-			} else if relativeDepth == val.Position {
+			if val.Position != -1 && relativeDepth == val.Position {
 				debugPrint("Found a positional value at relativePos:", relativeDepth, "value:", v)
 
 				// set original value for help output
@@ -371,6 +378,13 @@ func (sc *Subcommand) parse(p *Parser, args []string, depth int) error {
 
 			}
 		}
+	}
+
+	if varargs != nil && len(*varargs.AssignmentVars) > 0 && trailingArguments != nil {
+		*varargs.AssignmentVars = append(*varargs.AssignmentVars, "--")
+		*varargs.AssignmentVars = append(*varargs.AssignmentVars, trailingArguments...)
+	} else if varargs != nil {
+		*varargs.AssignmentVars = append(*varargs.AssignmentVars, trailingArguments...)
 	}
 
 	// if help was requested and we should show help when h is passed,
